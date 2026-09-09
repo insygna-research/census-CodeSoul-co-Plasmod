@@ -32,18 +32,24 @@ services:
     depends_on:
       - minio
     restart: "no"
+    # localhost, not the "minio" service name: some deployments of this stack (this
+    # platform's own multi-container-per-pod model included) run every one of these
+    # services as containers sharing ONE network namespace, where only localhost is
+    # reachable between them — there's no per-service DNS entry named "minio" to
+    # resolve. Plain `docker compose up` still works identically, since minio's own
+    # published port (9000:9000) puts it on localhost for every other container too.
     entrypoint:
       - /bin/sh
       - -c
       - |
         set -e
         for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do
-          if mc alias set local http://minio:9000 minioadmin minioadmin 2>/dev/null; then
+          if mc alias set local http://localhost:9000 minioadmin minioadmin 2>/dev/null; then
             break
           fi
           sleep 2
         done
-        mc alias set local http://minio:9000 minioadmin minioadmin
+        mc alias set local http://localhost:9000 minioadmin minioadmin
         mc mb local/plasmod-integration || true
 
   plasmod:
@@ -74,7 +80,10 @@ services:
       PLASMOD_DATA_DIR: /data
       PLASMOD_EMBEDDER: ${PLASMOD_EMBEDDER:-tfidf}
       PLASMOD_EMBEDDER_DEVICE: ${PLASMOD_EMBEDDER_DEVICE:-cpu}
-      S3_ENDPOINT: minio:9000
+      # Same reasoning as minio-init's entrypoint above — localhost, not the compose
+      # service name, since this container may share a network namespace with minio
+      # instead of reaching it over a per-service hostname.
+      S3_ENDPOINT: localhost:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin
       S3_BUCKET: plasmod-integration
