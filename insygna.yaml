@@ -11,6 +11,19 @@ description: |
   Plasmod: An Agent-Native Database for Cognitive Objects, Event-Driven Materialization, and Structured Evidence Retrieval. Plasmod is an open-source agent-native database designed for AI applications and multi-agent systems. It provides the memory and retrieval infrastructure that AI agents need to maintain context, track state evolution, and retrieve structured evidence across long-running workflows. Unlike traditional vector databases that focus primarily on embedding storage and similarity search, Plasmod treats memory , state , event , artifact , and relation as first-class database objects. This means your AI agents can store not just vectors, but complete cognitive context — including what happened (events), what the agent knows (memory), what the agent decided (state), what the agent produced (artifacts), and how these objects relate to each other (edges). Primary language: go; ships a container definition; observed outbound integrations: api.openai.com, api.cohere.ai, api-inference.huggingface.co.
 category: "Other"
 license: "mit"
+# Plasmod runs in split mode (PLASMOD_LISTEN_MODE=split in docker-compose.yml): 9091 is the
+# management port and serves only /healthz, 19530 is the HTTP API (/v1/query, /v1/ingest/events —
+# what the README and the SDKs talk to), 19531 is gRPC. The compose file lists 9091 first, so
+# without this the platform fronted the management port and every API path answered 404
+# (production, 2026-09-10). app_port is what the sidecar reverse-proxies to; the health check the
+# platform performs against it is not affected — Plasmod answers / with 404 on every port, it has
+# no web UI.
+runtime:
+  app_port: 19530
+  ports:
+    - 19530
+    - 9091
+    - 19531
 pricing:
   trial:
     days: 14
